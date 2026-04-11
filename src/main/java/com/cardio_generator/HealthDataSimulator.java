@@ -44,6 +44,17 @@ public class HealthDataSimulator {
         scheduleTasksForPatients(patientIds);
     }
 
+    /**
+     * Reads the command-line arguments and configures the simulator accordingly.
+     *
+     * <p>
+     * Recognised options are {@code -h} (help), {@code --patient-count},
+     * and {@code --output}. Unknown options cause the program to print help and
+     * exit with code 1.
+     *
+     * @param args the raw command-line arguments passed to {@code main}
+     * @throws IOException if a file output directory cannot be created
+     */
     private static void parseArguments(String[] args) throws IOException {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -105,6 +116,9 @@ public class HealthDataSimulator {
         }
     }
 
+    /**
+     * Prints a summary of all supported options and inputs
+     */
     private static void printHelp() {
         System.out.println("Usage: java HealthDataSimulator [options]");
         System.out.println("Options:");
@@ -122,6 +136,12 @@ public class HealthDataSimulator {
                 "  This command simulates data for 100 patients and sends the output to WebSocket clients connected to port 8080.");
     }
 
+    /**
+     * Creates a list of patient IDs from 1 to {@code patientCount}
+     * 
+     * @param patientCount the number of patients to simulate data on
+     * @return list of the patient's ID's
+     */
     private static List<Integer> initializePatientIds(int patientCount) {
         List<Integer> patientIds = new ArrayList<>();
         for (int i = 1; i <= patientCount; i++) {
@@ -130,6 +150,16 @@ public class HealthDataSimulator {
         return patientIds;
     }
 
+    /**
+     * Creates all data generators for a patient and schedules them
+     *
+     * <p>
+     * Each task runs at its own fixed rate: ECG and saturation every second,
+     * blood pressure every minute, blood levels every two minutes, and alerts
+     * every 20 seconds.
+     *
+     * @param patientIds the shuffled list of patient IDs to schedule tasks for
+     */
     private static void scheduleTasksForPatients(List<Integer> patientIds) {
         ECGDataGenerator ecgDataGenerator = new ECGDataGenerator(patientCount);
         BloodSaturationDataGenerator bloodSaturationDataGenerator = new BloodSaturationDataGenerator(patientCount);
@@ -147,10 +177,11 @@ public class HealthDataSimulator {
     }
 
     /**
+     * Sends a task to a schedular
      * 
-     * @param task
-     * @param period
-     * @param timeUnit
+     * @param task     the generation task that needs to run repeatedly
+     * @param period   how many times should that task be repeated
+     * @param timeUnit the unit of time of the {@code period}
      */
     private static void scheduleTask(Runnable task, long period, TimeUnit timeUnit) {
         scheduler.scheduleAtFixedRate(task, random.nextInt(5), period, timeUnit);
