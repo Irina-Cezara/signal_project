@@ -146,6 +146,12 @@ public class HealthDataSimulator {
         }
     }
 
+    /**
+     * 
+     * @param task
+     * @param period
+     * @param timeUnit
+     */
     private static void scheduleTask(Runnable task, long period, TimeUnit timeUnit) {
         scheduler.scheduleAtFixedRate(task, random.nextInt(5), period, timeUnit);
     }
