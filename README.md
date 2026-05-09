@@ -66,3 +66,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Project Members
 - Student ID : 6413292
+
+## UML Models
+
+Four UML class diagrams have been added to this project. Each diagram models a key subsystem of the Cardiovascular Health Monitoring System (CHMS).
+The four subsystems modelled are:
+
+- **Alert Generation System** – models how patient data is evaluated and how alerts are triggered and dispatched to medical staff.
+- **Data Storage System** – models how incoming patient measurements are stored, retrieved, and deleted.
+- **Patient Identification System** – models how incoming data is matched to the correct patient and how mismatches are handled.
+- **Data Access Layer** – models how data enters the system from external sources such as TCP, WebSocket, and file input.
+
+Each diagram is accompanied by the design choices made.
+You can find all diagrams and their documentation here: [uml_models](./uml_models)
