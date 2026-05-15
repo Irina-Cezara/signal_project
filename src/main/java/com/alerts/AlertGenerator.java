@@ -1,7 +1,11 @@
 package com.alerts;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.data_management.DataStorage;
 import com.data_management.Patient;
+import com.data_management.PatientRecord;
 
 /**
  * The {@code AlertGenerator} class is responsible for monitoring patient data
@@ -35,7 +39,42 @@ public class AlertGenerator {
      * @param patient the patient data to evaluate for alert conditions
      */
     public void evaluateData(Patient patient) {
-        // Implementation goes here
+        // Get all records patient
+        List<PatientRecord> records = dataStorage.getRecords(
+                patient.getPatientId(), 0, Long.MAX_VALUE);
+
+        // Separate records by type
+        List<PatientRecord> systolicRecords = new ArrayList<>();
+        List<PatientRecord> diastolicRecords = new ArrayList<>();
+        List<PatientRecord> saturationRecords = new ArrayList<>();
+        List<PatientRecord> ecgRecords = new ArrayList<>();
+        List<PatientRecord> alertRecords = new ArrayList<>();
+
+        for (PatientRecord record : records) {
+            switch (record.getRecordType()) {
+                case "SystolicPressure":
+                    systolicRecords.add(record);
+                    break;
+                case "DiastolicPressure":
+                    diastolicRecords.add(record);
+                    break;
+                case "Saturation":
+                    saturationRecords.add(record);
+                    break;
+                case "ECG":
+                    ecgRecords.add(record);
+                    break;
+                case "Alert":
+                    alertRecords.add(record);
+                    break;
+            }
+        }
+        // Run each check type
+        checkBloodPressureAlerts(patient, systolicRecords, diastolicRecords);
+        checkSaturationAlerts(patient, saturationRecords);
+        checkCombinedAlert(patient, systolicRecords, saturationRecords);
+        checkECGAlerts(patient, ecgRecords);
+        checkTriggeredAlert(patient, alertRecords);
     }
 
     /**
@@ -47,6 +86,196 @@ public class AlertGenerator {
      * @param alert the alert object containing details about the alert condition
      */
     private void triggerAlert(Alert alert) {
-        // Implementation might involve logging the alert or notifying staff
+        System.out.println("ALERT TRIGGERED - Patient: " + alert.getPatientId()
+                + " | Condition: " + alert.getCondition()
+                + " | Time: " + alert.getTimestamp());
+    }
+
+    // Helper methods (Checking threshholds for all records type)
+
+    /**
+     * Checks all blood pressure related alerts
+     * - Critical threholds (too high or too low)
+     * - Trend alerts (3 consecutive readings changing by more than 10)
+     */
+    private void checkBloodPressureAlerts(Patient patient,
+            List<PatientRecord> systolicRecords,
+            List<PatientRecord> diastolicRecords) {
+        String patientId = String.valueOf(patient.getPatientId());
+
+        // Check systolic critical thresholds
+        for (PatientRecord record : systolicRecords) {
+            double value = record.getMeasurementValue();
+            if (value > 180) {
+                triggerAlert(new Alert(patientId,
+                        "Critical Systolic High: " + value,
+                        record.getTimestamp()));
+            } else if (value < 90) {
+                triggerAlert(new Alert(patientId,
+                        "Critical Systolic Low: " + value,
+                        record.getTimestamp()));
+            }
+        }
+
+        // Check diastolic critical thresholds
+        for (PatientRecord record : diastolicRecords) {
+            double value = record.getMeasurementValue();
+            if (value > 120) {
+                triggerAlert(new Alert(patientId,
+                        "Critical Diastolic High: " + value,
+                        record.getTimestamp()));
+            } else if (value < 60) {
+                triggerAlert(new Alert(patientId,
+                        "Critical Diastolic Low: " + value,
+                        record.getTimestamp()));
+            }
+        }
+
+        // Check systolic trend
+        checkTrend(patient, systolicRecords, "Systolic");
+
+        // Check diastolic trend
+        checkTrend(patient, diastolicRecords, "Diastolic");
+    }
+
+    /**
+     * Checks if 3 consecutive readings show a consistent
+     * increase or decrease of more than 10 each time
+     */
+    private void checkTrend(Patient patient,
+            List<PatientRecord> records,
+            String type) {
+        String patientId = String.valueOf(patient.getPatientId());
+
+        // Need at least 3 records to check a trend
+        if (records.size() < 3)
+            return;
+
+        for (int i = 2; i < records.size(); i++) {
+            double first = records.get(i - 2).getMeasurementValue();
+            double second = records.get(i - 1).getMeasurementValue();
+            double third = records.get(i).getMeasurementValue();
+
+            boolean increasing = (second - first > 10) && (third - second > 10);
+            boolean decreasing = (first - second > 10) && (second - third > 10);
+
+            if (increasing) {
+                triggerAlert(new Alert(patientId,
+                        type + " Increasing Trend",
+                        records.get(i).getTimestamp()));
+            } else if (decreasing) {
+                triggerAlert(new Alert(patientId,
+                        type + " Decreasing Trend",
+                        records.get(i).getTimestamp()));
+            }
+        }
+    }
+
+    /**
+     * Checks blood oxygen saturation alerts
+     * - Below 92% triggers low saturation alert
+     * - Drop of 5% or more within 10 minutes triggers rapid drop alert
+     */
+    private void checkSaturationAlerts(Patient patient,
+            List<PatientRecord> saturationRecords) {
+        String patientId = String.valueOf(patient.getPatientId());
+        long tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+        for (int i = 0; i < saturationRecords.size(); i++) {
+            PatientRecord current = saturationRecords.get(i);
+            double value = current.getMeasurementValue();
+
+            // Low sarutaation alert
+            if (value < 92) {
+                triggerAlert(new Alert(patientId,
+                        "Low Saturation: " + value + "%",
+                        current.getTimestamp()));
+            }
+
+            for (int j = i - 1; j >= 0; j--) {
+                PatientRecord earlier = saturationRecords.get(j);
+
+                // Stop if more than 10 minute passed
+                if (current.getTimestamp() - earlier.getTimestamp() > tenMinutes) {
+                    break;
+                }
+
+                double drop = earlier.getMeasurementValue() - value;
+                if (drop >= 5) {
+                    triggerAlert(new Alert(patientId,
+                            "Rapid Saturation Drop: " + drop + "%",
+                            current.getTimestamp()));
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks hypotensive + hypoxemia alert
+     * Triggers when both systolic < 90 A ND saturation < 92 at the same time
+     */
+    private void checkCombinedAlert(Patient patient,
+            List<PatientRecord> systolicRecords,
+            List<PatientRecord> saturationRecords) {
+        String patientId = String.valueOf(patient.getPatientId());
+        boolean lowBloodPressure = systolicRecords.stream().anyMatch(r -> r.getMeasurementValue() < 90);
+
+        boolean lowSaturation = saturationRecords.stream().anyMatch(r -> r.getMeasurementValue() < 92);
+
+        if (lowBloodPressure && lowSaturation) {
+            triggerAlert(new Alert(patientId,
+                    "Hypotensive Hypoxemia Alert",
+                    System.currentTimeMillis()));
+        }
+    }
+
+    /**
+     * Checks ECG data for abnormal peaks
+     * Uses a sliding window average. If a reading is far above
+     * the average it is considered an abnormal peak
+     */
+    private void checkECGAlerts(Patient patient,
+            List<PatientRecord> ecgRecords) {
+        String patientId = String.valueOf(patient.getPatientId());
+        int windowSize = 10; // look at last 10 readings for average
+        double peakThreshold = 2.0; // alert if value is 2x the average
+
+        if (ecgRecords.size() < windowSize)
+            return;
+
+        for (int i = windowSize; i < ecgRecords.size(); i++) {
+            // Computz average
+            double sum = 0;
+            for (int j = i - windowSize; j < i; j++) {
+                sum += Math.abs(ecgRecords.get(j).getMeasurementValue());
+            }
+            double average = sum / windowSize;
+
+            double currentValue = Math.abs(
+                    ecgRecords.get(i).getMeasurementValue());
+
+            if (average > 0 && currentValue > peakThreshold * average) {
+                triggerAlert(new Alert(patientId,
+                        "Abnormal ECG Peak: " + currentValue,
+                        ecgRecords.get(i).getTimestamp()));
+            }
+        }
+    }
+
+    /**
+     * Checks for manually triggered alerts from nurses or patients
+     */
+    private void checkTriggeredAlert(Patient patient,
+            List<PatientRecord> alertRecords) {
+        String patientId = String.valueOf(patient.getPatientId());
+
+        for (PatientRecord record : alertRecords) {
+            if (record.getMeasurementValue() == 1.0) {
+                triggerAlert(new Alert(patientId,
+                        "Manual Alert Triggered",
+                        record.getTimestamp()));
+            }
+        }
     }
 }
