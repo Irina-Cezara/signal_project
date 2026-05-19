@@ -92,4 +92,10 @@ public class FileDataReader implements DataReader {
             System.err.println("Skipping malformed line: " + line);
         }
     }
+
+    // Not using interface method for webSocket
+    @Override
+    public void readData(String serverUri, DataStorage dataStorage) throws IOException {
+        throw new UnsupportedOperationException("FileDataReader does not use WebSocket");
+    }
 }
