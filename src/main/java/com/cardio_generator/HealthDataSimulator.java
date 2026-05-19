@@ -26,11 +26,20 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 
 public class HealthDataSimulator {
+    private static HealthDataSimulator instance;
 
     private static int patientCount = 50; // Default number of patients
     private static ScheduledExecutorService scheduler;
     private static OutputStrategy outputStrategy = new ConsoleOutputStrategy(); // Default output strategy
     private static final Random random = new Random();
+
+    // Singleton pattenr
+    public static HealthDataSimulator getInstance() {
+        if (instance == null) {
+            instance = new HealthDataSimulator();
+        }
+        return instance;
+    }
 
     public static void main(String[] args) throws IOException {
 
