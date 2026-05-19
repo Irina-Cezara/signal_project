@@ -22,4 +22,39 @@ class DataStorageTest {
         assertEquals(2, records.size()); // Check if two records are retrieved
         assertEquals(100.0, records.get(0).getMeasurementValue()); // Validate first record
     }
+
+    @Test
+    void testGetRecordsReturnsEmptyForUnknownPatient() {
+        DataStorage storage = new DataStorage();
+        List<PatientRecord> records = storage.getRecords(999, 0, Long.MAX_VALUE);
+        assertTrue(records.isEmpty());
+    }
+
+    @Test
+    void testGetAllPatients() {
+        DataStorage storage = new DataStorage();
+        storage.addPatientData(1, 85.0, "HeartRate", 1000L);
+        storage.addPatientData(2, 90.0, "HeartRate", 1000L);
+        assertEquals(2, storage.getAllPatients().size());
+    }
+
+    @Test
+    void testGetInstanceReturnsSameInstance() {
+        DataStorage instance1 = DataStorage.getInstance();
+        DataStorage instance2 = DataStorage.getInstance();
+        assertSame(instance1, instance2);
+    }
+
+    @Test
+    void testGetInstanceNotNull() {
+        assertNotNull(DataStorage.getInstance());
+    }
+
+    @Test
+    void testRecordTypeIsCorrect() {
+        DataStorage storage = new DataStorage();
+        storage.addPatientData(1, 85.0, "HeartRate", 1000L);
+        List<PatientRecord> records = storage.getRecords(1, 0, Long.MAX_VALUE);
+        assertEquals("HeartRate", records.get(0).getRecordType());
+    }
 }
